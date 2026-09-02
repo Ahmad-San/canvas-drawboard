@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas DrawBoard — WebProfiler Test App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: monospace;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      background: #1a1a2a;
+      color: #e8e8f0;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    #toolbar h1 {
+      font-size: 13px;
+      color: #00e5ff;
+      margin-right: 10px;
+    }
+    .tool-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #ccc;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 11px;
+      transition: all 0.1s;
+    }
+    .tool-btn:hover { border-color: #00e5ff; color: #00e5ff; }
+    .tool-btn.active { border-color: #00e5ff; color: #00e5ff; background: rgba(0,229,255,0.1); }
+    #color-picker { width: 30px; height: 24px; border: none; cursor: pointer; border-radius: 3px; }
+    #size-range { width: 80px; }
+    #status { margin-left: auto; color: #555570; font-size: 10px; }
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>⬡ DrawBoard</h1>
+  <button class="tool-btn active" id="btn-pen" onclick="setTool('pen')">✏ Pen</button>
+  <button class="tool-btn" id="btn-rect" onclick="setTool('rect')">▭ Rect</button>
+  <button class="tool-btn" id="btn-circle" onclick="setTool('circle')">○ Circle</button>
+  <button class="tool-btn" id="btn-eraser" onclick="setTool('eraser')">⌫ Eraser</button>
+  <input type="color" id="color-picker" value="#0077cc" title="Color">
+  <input type="range" id="size-range" min="1" max="40" value="4" title="Size">
+  <button class="tool-btn" onclick="clearCanvas()">✕ Clear</button>
+  <button class="tool-btn" onclick="undoStroke()">↩ Undo</button>
+  <span id="status">ready</span>
+</div>
+
+<div id="canvas-container">
+  <canvas id="canvas"></canvas>
+</div>
+
+<!-- WebProfiler drop-in — two lines only -->
+<script src="web-profiler.js"></script>
+<script>WebProfiler.init({ logToConsole: true });</script>
+
+<script src="app.js"></script>
+
+</body>
+</html>
