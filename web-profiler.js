@@ -1455,14 +1455,17 @@
       a.click();
     },
 
-    // ── Share CSV via Email ───────────────────────────────────────
-    // Opens the default mail app with CSV data in the body.
+    // ── Share CSV via EmailJS ─────────────────────────────────────
+    // Sends CSV data directly to email without needing a mail app.
     // Workaround for browsers that cannot download files (e.g. Tizen).
-    shareCSV: function () {
+    shareCSV: async function () {
       if (!state.latencySamples.length && !state.callTrees.length) {
         console.warn('[WebProfiler] No data to share.');
         return;
       }
+
+      var status = hud ? hud.querySelector('#__wp_status__') : null;
+      if (status) status.textContent = 'sending email…';
 
       var sections = [];
       if (state.latencySamples.length) {
@@ -1492,9 +1495,35 @@
         });
       }
       var csvText = sections.join('\n');
-      var mailto = 'mailto:?subject=WebProfiler%20CSV%20' + Date.now() +
-        '&body=' + encodeURIComponent(csvText);
-      window.location.href = mailto;
+
+      try {
+        var res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id:  'service_22v8msp',
+            template_id: 'template_xw5gpns',
+            user_id:     'LDxkKZXkkMXmhMvTX',
+            template_params: {
+              device:    navigator.userAgent,
+              timestamp: new Date().toISOString(),
+              csv_data:  csvText,
+            },
+          }),
+        });
+
+        if (res.ok) {
+          if (status) status.textContent = 'email sent!';
+          if (state.options.logToConsole) console.log('[WebProfiler] CSV sent via email.');
+          alert('CSV sent to your email!');
+        } else {
+          throw new Error('Status ' + res.status);
+        }
+      } catch(e) {
+        if (status) status.textContent = 'email failed';
+        console.warn('[WebProfiler] Email failed:', e.message);
+        alert('Email failed: ' + e.message);
+      }
     },
     // Opens profiler.firefox.com in a new tab and sends the profile
     // via postMessage — works even on browsers that can't download files.
