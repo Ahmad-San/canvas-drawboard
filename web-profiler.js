@@ -1059,68 +1059,68 @@
                 // Restart immediately for next interaction
                 startNativeProfiler();
 
+                var latency = meta.rafLatency !== null ? meta.rafLatency :
+                  Math.round(performance.now() - meta.downTime);
+
+                var trees = [];
+
                 if (trace && trace.samples.length) {
                   // No filter needed — profiler was restarted at previous pointerdown
                   // so all samples in this trace belong to this interaction
-                  var trees = nativeTraceToCallTrees(trace);
-                  var latency = meta.rafLatency !== null ? meta.rafLatency :
-                    Math.round(performance.now() - meta.downTime);
+                  trees = nativeTraceToCallTrees(trace);
+                }
 
-                  // Always create at least one tree node — even with no samples
-                  // so HUD always updates after every interaction
-                  if (!trees.length) {
-                    trees = [{
-                      name: 'interaction_native_' + meta.count,
-                      pointerType: meta.pointerType,
-                      startMs: meta.downTime,
-                      endMs: meta.downTime + latency,
-                      durationMs: latency,
-                      latencyMs: latency,
-                      children: [],
-                    }];
-                  }
+                // Always create at least one tree node — even with no samples
+                // so HUD always updates and numbering stays consistent
+                if (!trees.length) {
+                  trees = [{
+                    name: 'interaction_native_' + meta.count,
+                    pointerType: meta.pointerType,
+                    startMs: meta.downTime,
+                    endMs: meta.downTime + latency,
+                    durationMs: latency,
+                    latencyMs: latency,
+                    children: [],
+                  }];
+                }
 
-                  trees.forEach(function(t) {
-                    t.name = 'interaction_native_' + meta.count;
-                    t.latencyMs = latency;
-                    // Fix duration: use pointerdown time as start, not profiler start
-                    // (profiler runs continuously between interactions so its
-                    // startMs would include idle time between interactions)
-                    t.startMs = meta.downTime;
-                    t.endMs = meta.downTime + latency;
-                    t.durationMs = parseFloat((performance.now() - meta.downTime).toFixed(3));
-                    t.children.unshift(
-                      { name: 'event delay: ' + delay + 'ms', durationMs: delay, children: [] },
-                      { name: 'event processing: ' + procTime + 'ms', durationMs: procTime, children: [] },
-                      { name: 'first-rAF (latency)', durationMs: latency, children: [] }
-                    );
-                    // Add DOM mutations recorded during this interaction
-                    var dm = state.currentDOMMutations;
-                    if (dm) {
-                      var totalDM = dm._childList + dm._attributes + dm._characters;
-                      if (totalDM > 0) {
-                        t.children.push({
-                          name: 'DOM mutations \u00d7' + totalDM +
-                            ' (nodes:' + dm._childList +
-                            ' attrs:' + dm._attributes +
-                            ' text:' + dm._characters + ')',
-                          durationMs: null,
-                          children: [],
-                          _isDOMNode: true,
-                        });
-                      }
+                trees.forEach(function(t) {
+                  t.name = 'interaction_native_' + meta.count;
+                  t.pointerType = meta.pointerType;
+                  t.latencyMs = latency;
+                  t.startMs = meta.downTime;
+                  t.endMs = meta.downTime + latency;
+                  t.durationMs = parseFloat((performance.now() - meta.downTime).toFixed(3));
+                  t.children.unshift(
+                    { name: 'event delay: ' + delay + 'ms', durationMs: delay, children: [] },
+                    { name: 'event processing: ' + procTime + 'ms', durationMs: procTime, children: [] },
+                    { name: 'first-rAF (latency)', durationMs: latency, children: [] }
+                  );
+                  var dm = state.currentDOMMutations;
+                  if (dm) {
+                    var totalDM = dm._childList + dm._attributes + dm._characters;
+                    if (totalDM > 0) {
+                      t.children.push({
+                        name: 'DOM mutations \u00d7' + totalDM +
+                          ' (nodes:' + dm._childList +
+                          ' attrs:' + dm._attributes +
+                          ' text:' + dm._characters + ')',
+                        durationMs: null,
+                        children: [],
+                        _isDOMNode: true,
+                      });
                     }
-                    state.currentDOMMutations = null;
-                  });
-
-                  state.callTrees = state.callTrees.concat(trees);
-                  updateHUD();
-
-                  if (state.options.logToConsole) {
-                    console.log('[WebProfiler] Native interaction_' + meta.count +
-                      ': delay=' + delay + 'ms proc=' + procTime + 'ms samples=' +
-                      trace.samples.length);
                   }
+                  state.currentDOMMutations = null;
+                });
+
+                state.callTrees = state.callTrees.concat(trees);
+                updateHUD();
+
+                if (state.options.logToConsole) {
+                  console.log('[WebProfiler] Native interaction_' + meta.count +
+                    ': delay=' + delay + 'ms proc=' + procTime + 'ms samples=' +
+                    (trace ? trace.samples.length : 0));
                 }
               });
             });
@@ -1245,13 +1245,13 @@
 
       return {
         name: 'interaction_native_' + (i + 1),
-        pointerType: 'pen',
+        pointerType: 'unknown',
         startMs: startMs,
         endMs: endMs,
         durationMs: parseFloat((endMs - startMs).toFixed(3)),
         latencyMs: null,
         children: children,
-        source: 'native', // mark as native profiler data
+        source: 'native',
       };
     });
   }
