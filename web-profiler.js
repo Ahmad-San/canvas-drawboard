@@ -1024,6 +1024,7 @@
 
   var nativeProfiler = null;   // holds the Profiler instance if available
   var nativeTraceData = null;  // holds the trace after stop()
+  var nativeSampleInterval = 10; // resolved sampleInterval (ms), set once the browser picks its actual minimum
 
   function isNativeProfilerAvailable() {
     return typeof global.Profiler === 'function';
@@ -1031,12 +1032,16 @@
 
   function startNativeProfiler() {
     try {
+      // Request 0 (the finest interval the spec allows) so the browser
+      // clamps up to its own actual minimum rather than us guessing one.
+      // The UA picks silently, so read back the resolved value it settled on.
       nativeProfiler = new global.Profiler({
-        sampleInterval: 10,
+        sampleInterval: 0,
         maxBufferSize: 10000,
       });
+      nativeSampleInterval = nativeProfiler.sampleInterval || nativeSampleInterval;
       if (state.options.logToConsole) {
-        console.log('[WebProfiler] JS Self-Profiling API available — using native profiler.');
+        console.log('[WebProfiler] JS Self-Profiling API available — using native profiler (sampleInterval=' + nativeSampleInterval + 'ms).');
       }
 
       // Persistent PerformanceObserver — fires after every pointerdown event
@@ -1181,14 +1186,16 @@
   // so it integrates with the HUD tree view and Firefox Profiler export.
   //
   // The native trace contains:
-  //   samples[]  — {timestamp, stackId} one per sample interval (10ms)
+  //   samples[]  — {timestamp, stackId} one per sample interval (nativeSampleInterval ms)
   //   stacks[]   — {frameId, parentId} linked list forming call stack
   //   frames[]   — {name, resourceId, line, column} function info
   //
   // Samples are grouped into interactions by time gaps >500ms.
   // For each interaction, the top-10 most frequent functions are
   // extracted and shown as children with (N samples) annotations.
-  // Duration is estimated as sampleCount × sampleInterval (10ms).
+  // Duration is estimated as sampleCount × nativeSampleInterval — the
+  // actual resolved interval the browser picked (see startNativeProfiler),
+  // not a hardcoded guess.
   function nativeTraceToCallTrees(trace) {
     if (!trace || !trace.samples.length) return [];
 
@@ -1238,7 +1245,7 @@
         .map(function (name) {
           return {
             name: name + ' (' + funcCounts[name] + ' samples)',
-            durationMs: funcCounts[name] * 10, // approx: samples × interval
+            durationMs: funcCounts[name] * nativeSampleInterval, // approx: samples × resolved interval
             children: [],
           };
         });
